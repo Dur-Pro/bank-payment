@@ -52,7 +52,7 @@ class AccountMove(models.Model):
 
     def create_account_payment_line(self):
         apoo = self.env["account.payment.order"]
-        result_payorder_ids = []
+        result_payorder_ids = set()
         action_payment_type = "debit"
         for move in self:
             if move.state != "posted":
@@ -90,7 +90,7 @@ class AccountMove(models.Model):
                         move._prepare_new_payment_order(payment_mode)
                     )
                     new_payorder = True
-                result_payorder_ids.append(payorder.id)
+                result_payorder_ids.add(payorder.id)
                 action_payment_type = payorder.payment_type
                 count = 0
                 for line in applicable_lines.filtered(
@@ -102,8 +102,11 @@ class AccountMove(models.Model):
                     move.message_post(
                         body=_(
                             "%(count)d payment lines added to the new draft payment "
-                            "order %(name)s which has been automatically created.",
+                            "order <a href=# data-oe-model=account.payment.order "
+                            "data-oe-id=%(order_id)d>%(name)s</a>, which has been "
+                            "automatically created.",
                             count=count,
+                            order_id=payorder.id,
                             name=payorder.name,
                         )
                     )
@@ -111,8 +114,11 @@ class AccountMove(models.Model):
                     move.message_post(
                         body=_(
                             "%(count)d payment lines added to the existing draft "
-                            "payment order %(name)s.",
+                            "payment order "
+                            "<a href=# data-oe-model=account.payment.order "
+                            "data-oe-id=%(order_id)d>%(name)s</a>.",
                             count=count,
+                            order_id=payorder.id,
                             name=payorder.name,
                         )
                     )
