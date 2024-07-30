@@ -175,9 +175,8 @@ class TestMandate(TransactionCase):
 
     def test_mandate_reference_03(self):
         """
-        Test case: create a mandate with "New" as reference
-        Expected result: the reference of the created mandate is not empty and
-        is not "New"
+        Test case: create a mandate with "TEST" as reference
+        Expected result: the reference of the created mandate is "TEST"
         """
         bank_account = self.env.ref("account_payment_mode.res_partner_12_iban")
         mandate = self.env["account.banking.mandate"].create(
@@ -185,19 +184,51 @@ class TestMandate(TransactionCase):
                 "partner_bank_id": bank_account.id,
                 "signature_date": "2015-01-01",
                 "company_id": self.company.id,
-                "unique_mandate_reference": "New",
+                "unique_mandate_reference": "TEST",
             }
         )
         self.assertTrue(mandate.unique_mandate_reference)
-        self.assertNotEqual(mandate.unique_mandate_reference, "New")
+        self.assertEqual(mandate.unique_mandate_reference, "TEST")
+
+    def test_mandate_reference_04(self):
+        """
+        Test case: create a mandate with "/" as reference
+        Expected result: the reference of the created mandate is not "/"
+        """
+        bank_account = self.env.ref("account_payment_mode.res_partner_12_iban")
+        mandate = self.env["account.banking.mandate"].create(
+            {
+                "partner_bank_id": bank_account.id,
+                "signature_date": "2015-01-01",
+                "company_id": self.company.id,
+                "unique_mandate_reference": "/",
+            }
+        )
+        self.assertTrue(mandate.unique_mandate_reference)
+        self.assertNotEqual(mandate.unique_mandate_reference, "/")
 
     def test_mandate_reference_05(self):
         """
-        Test case: create a mandate with False as reference
+        Test case: create a mandate without reference
         Expected result: the reference of the created mandate is not empty
         """
         bank_account = self.env.ref("account_payment_mode.res_partner_12_iban")
         mandate = self.env["account.banking.mandate"].create(
+            {
+                "partner_bank_id": bank_account.id,
+                "signature_date": "2015-01-01",
+                "company_id": self.company.id,
+            }
+        )
+        self.assertTrue(mandate.unique_mandate_reference)
+
+    def test_mandate_reference_06(self):
+        """
+        Test case: create a mandate with False as reference (empty with UX)
+        Expected result: the reference of the created mandate is not False
+        """
+        bank_account = self.env.ref("account_payment_mode.res_partner_12_iban")
+        mandate_1 = self.env["account.banking.mandate"].create(
             {
                 "partner_bank_id": bank_account.id,
                 "signature_date": "2015-01-01",
@@ -205,15 +236,8 @@ class TestMandate(TransactionCase):
                 "unique_mandate_reference": False,
             }
         )
-        self.assertTrue(mandate.unique_mandate_reference)
-
-    def test_mandate_reference_06(self):
-        """
-        Test case: create a mandate with a empty string as reference
-        Expected result: the reference of the created mandate is not empty
-        """
-        bank_account = self.env.ref("account_payment_mode.res_partner_12_iban")
-        mandate = self.env["account.banking.mandate"].create(
+        self.assertTrue(mandate_1.unique_mandate_reference)
+        mandate_2 = self.env["account.banking.mandate"].create(
             {
                 "partner_bank_id": bank_account.id,
                 "signature_date": "2015-01-01",
@@ -221,13 +245,25 @@ class TestMandate(TransactionCase):
                 "unique_mandate_reference": "",
             }
         )
-        self.assertTrue(mandate.unique_mandate_reference)
+        self.assertTrue(mandate_2.unique_mandate_reference)
 
-    def setUp(self):
-        res = super(TestMandate, self).setUp()
+    @classmethod
+    def setUpClass(cls):
+        res = super(TestMandate, cls).setUpClass()
+        cls.env = cls.env(
+            context=dict(
+                cls.env.context,
+                mail_create_nolog=True,
+                mail_create_nosubscribe=True,
+                mail_notrack=True,
+                no_reset_password=True,
+                tracking_disable=True,
+            )
+        )
+
         # Company
-        self.company = self.env.ref("base.main_company")
+        cls.company = cls.env.ref("base.main_company")
 
         # Company 2
-        self.company_2 = self.env["res.company"].create({"name": "Company 2"})
+        cls.company_2 = cls.env["res.company"].create({"name": "Company 2"})
         return res

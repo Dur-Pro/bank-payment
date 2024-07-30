@@ -8,6 +8,7 @@ import base64
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
 
 
 class AccountPaymentOrder(models.Model):
@@ -26,6 +27,9 @@ class AccountPaymentOrder(models.Model):
         readonly=True,
         states={"draft": [("readonly", False)]},
         check_company=True,
+    )
+    partner_banks_archive_msg = fields.Html(
+        compute="_compute_partner_banks_archive_msg",
     )
     payment_type = fields.Selection(
         selection=[("inbound", "Inbound"), ("outbound", "Outbound")],
@@ -143,6 +147,28 @@ class AccountPaymentOrder(models.Model):
         compute="_compute_move_count", string="Number of Journal Entries"
     )
     description = fields.Char()
+
+    @api.depends(
+        "payment_line_ids.partner_bank_id", "payment_line_ids.partner_bank_id.active"
+    )
+    def _compute_partner_banks_archive_msg(self):
+        """Information message to show archived bank accounts and to be able
+        to act on them before confirmation (avoid duplicates)."""
+        for item in self:
+            msg_lines = []
+            for partner_bank in item.payment_line_ids.filtered(
+                lambda x: x.partner_bank_id and not x.partner_bank_id.active
+            ).mapped("partner_bank_id"):
+                msg_line = _(
+                    "<b>Account Number</b>: %(number)s - <b>Partner</b>: %(name)s"
+                ) % {
+                    "number": partner_bank.acc_number,
+                    "name": partner_bank.partner_id.display_name,
+                }
+                msg_lines.append(msg_line)
+            item.partner_banks_archive_msg = (
+                "<br/>".join(msg_lines) if len(msg_lines) > 0 else False
+            )
 
     @api.depends("payment_mode_id")
     def _compute_allowed_journal_ids(self):
@@ -373,17 +399,13 @@ class AccountPaymentOrder(models.Model):
         return True
 
     def generate_payment_file(self):
-        """Returns (payment file as string, filename)"""
+        """Returns (payment file as string, filename).
+
+        By default, any method not specifically intercepted by extra modules will do
+        nothing, including the existing manual one.
+        """
         self.ensure_one()
-        if self.payment_method_id.code == "manual":
-            return (False, False)
-        else:
-            raise UserError(
-                _(
-                    "No handler for this payment method. Maybe you haven't "
-                    "installed the related Odoo module."
-                )
-            )
+        return (False, False)
 
     def open2generated(self):
         self.ensure_one()
@@ -420,15 +442,50 @@ class AccountPaymentOrder(models.Model):
         return action
 
     def generated2uploaded(self):
+        """Post payments and reconcile against source journal items
+
+        Partially reconcile payments that don't match their source journal items,
+        then reconcile the rest in one go.
+        """
         self.payment_ids.action_post()
         # Perform the reconciliation of payments and source journal items
         for payment in self.payment_ids:
-            (
-                payment.payment_line_ids.move_line_id
-                + payment.move_id.line_ids.filtered(
-                    lambda x: x.account_id == payment.destination_account_id
-                )
-            ).reconcile()
+            payment_move_line_id = payment.move_id.line_ids.filtered(
+                lambda x: x.account_id == payment.destination_account_id
+            )
+            apr = self.env["account.partial.reconcile"]
+            excl_pay_lines = self.env["account.payment.line"]
+            for line in payment.payment_line_ids:
+                if not line.move_line_id:
+                    continue
+                sign = -1 if payment.payment_order_id.payment_type == "outbound" else 1
+                if (
+                    float_compare(
+                        line.amount_currency,
+                        (line.move_line_id.amount_residual_currency * sign),
+                        precision_rounding=line.move_line_id.currency_id.rounding,
+                    )
+                    != 0
+                ):
+                    if line.move_line_id.amount_residual_currency < 0:
+                        debit_move_id = payment_move_line_id.id
+                        credit_move_id = line.move_line_id.id
+                    else:
+                        debit_move_id = line.move_line_id.id
+                        credit_move_id = payment_move_line_id.id
+                    apr.create(
+                        {
+                            "debit_move_id": debit_move_id,
+                            "credit_move_id": credit_move_id,
+                            "amount": abs(line.amount_company_currency),
+                            "debit_amount_currency": abs(line.amount_currency),
+                            "credit_amount_currency": abs(line.amount_currency),
+                        }
+                    )
+                    excl_pay_lines |= line
+            pay_lines = payment.payment_line_ids - excl_pay_lines
+            if pay_lines:
+                (pay_lines.move_line_id + payment_move_line_id).reconcile()
         self.write(
             {"state": "uploaded", "date_uploaded": fields.Date.context_today(self)}
         )

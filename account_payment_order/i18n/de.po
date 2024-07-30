@@ -37,6 +37,12 @@ msgid ""
 msgstr ""
 
 #. module: account_payment_order
+#: code:addons/account_payment_order/models/account_payment_order.py:0
+#, python-format
+msgid "<b>Account Number</b>: %(number)s - <b>Partner</b>: %(name)s"
+msgstr ""
+
+#. module: account_payment_order
 #: model_terms:ir.ui.view,arch_db:account_payment_order.print_account_payment_order_document
 msgid "<strong>Company Currency:</strong>"
 msgstr "<strong>Unternehmenswährung:</strong>"
@@ -529,7 +535,6 @@ msgstr ""
 
 #. module: account_payment_order
 #: model:ir.model.fields,help:account_payment_order.field_account_payment_order__message_has_error
-#: model:ir.model.fields,help:account_payment_order.field_account_payment_order__message_has_sms_error
 msgid "If checked, some messages have a delivery error."
 msgstr ""
 
@@ -741,8 +746,8 @@ msgstr ""
 #: code:addons/account_payment_order/models/account_move.py:0
 #, python-format
 msgid ""
-"No Payment Line created for invoice %s because it already exists or because "
-"this invoice is already paid."
+"No Payment Line created for invoice %s because its payment mode is not "
+"intended for payment orders."
 msgstr ""
 
 #. module: account_payment_order
@@ -752,11 +757,9 @@ msgid "No Payment Mode on invoice %s"
 msgstr ""
 
 #. module: account_payment_order
-#: code:addons/account_payment_order/models/account_payment_order.py:0
+#: code:addons/account_payment_order/models/account_move.py:0
 #, python-format
-msgid ""
-"No handler for this payment method. Maybe you haven't installed the related "
-"Odoo module."
+msgid "No pending AR/AP lines to add on %s"
 msgstr ""
 
 #. module: account_payment_order
@@ -850,6 +853,11 @@ msgid "Partner Bank Account"
 msgstr "Partner Bankkonto"
 
 #. module: account_payment_order
+#: model:ir.model.fields,field_description:account_payment_order.field_account_payment_order__partner_banks_archive_msg
+msgid "Partner Banks Archive Msg"
+msgstr ""
+
+#. module: account_payment_order
 #: model:ir.model.fields,field_description:account_payment_order.field_account_payment_line_create__partner_ids
 #, fuzzy
 msgid "Partners"
@@ -879,6 +887,11 @@ msgstr "Zahlungsdatei"
 #. module: account_payment_order
 #: model:ir.model.fields,field_description:account_payment_order.field_account_payment__payment_line_ids
 msgid "Payment Line"
+msgstr ""
+
+#. module: account_payment_order
+#: model:ir.model.fields,field_description:account_payment_order.field_account_payment__payment_line_date
+msgid "Payment Line Date"
 msgstr ""
 
 #. module: account_payment_order
@@ -974,6 +987,7 @@ msgstr ""
 
 #. module: account_payment_order
 #: model:ir.model,name:account_payment_order.model_account_payment
+#: model_terms:ir.ui.view,arch_db:account_payment_order.account_payment_line_form
 msgid "Payments"
 msgstr "Zahlungen"
 
@@ -988,11 +1002,6 @@ msgstr "Zahlungsreferenz"
 #. module: account_payment_order
 #: model:ir.model.fields,field_description:account_payment_order.field_account_payment_order__activity_user_id
 msgid "Responsible User"
-msgstr ""
-
-#. module: account_payment_order
-#: model:ir.model.fields,field_description:account_payment_order.field_account_payment_order__message_has_sms_error
-msgid "SMS Delivery error"
 msgstr ""
 
 #. module: account_payment_order
@@ -1086,6 +1095,18 @@ msgstr ""
 #, python-format
 msgid ""
 "The amount for Partner '%(partner)s' is negative or null (%(amount).2f) !"
+msgstr ""
+
+#. module: account_payment_order
+#: model_terms:ir.ui.view,arch_db:account_payment_order.account_payment_order_form
+msgid "The following bank accounts are archived:"
+msgstr ""
+
+#. module: account_payment_order
+#: code:addons/account_payment_order/models/account_move.py:0
+#, python-format
+msgid ""
+"The invoice %(move)s is already added in the payment order(s) %(order)s."
 msgstr ""
 
 #. module: account_payment_order
